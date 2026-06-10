@@ -1,0 +1,4 @@
+app/env/
+cache/
+logs/
+.claude/

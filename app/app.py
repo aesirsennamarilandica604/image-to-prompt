@@ -210,6 +210,9 @@ def get_runtime(request_id: str | None = None) -> FlorenceRuntime:
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 device = "mps"
                 dtype = torch.float32
+                # Cap Metal allocations so a runaway request raises an error
+                # instead of exhausting unified memory and freezing the machine.
+                torch.mps.set_per_process_memory_fraction(0.5)
             else:
                 device = "cpu"
                 dtype = torch.float32
@@ -226,6 +229,13 @@ def get_runtime(request_id: str | None = None) -> FlorenceRuntime:
         return runtime
 
 
+def release_accelerator_cache(rt: FlorenceRuntime) -> None:
+    if rt.device == "mps":
+        rt.torch.mps.empty_cache()
+    elif rt.device == "cuda":
+        rt.torch.cuda.empty_cache()
+
+
 def run_florence_task(image: Image.Image, task: str, label: str, request_id: str) -> dict[str, Any]:
     with progress_stage(request_id, label):
         rt = get_runtime(request_id)
@@ -237,16 +247,24 @@ def run_florence_task(image: Image.Image, task: str, label: str, request_id: str
                 if key == "pixel_values":
                     value = value.to(rt.dtype)
             moved[key] = value
-        with rt.torch.inference_mode():
-            generated_ids = rt.model.generate(
-                input_ids=moved["input_ids"],
-                pixel_values=moved["pixel_values"],
-                max_new_tokens=1024,
-                num_beams=3,
-                early_stopping=False,
-            )
-        generated_text = rt.processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
-        return rt.processor.post_process_generation(generated_text, task=task, image_size=(image.width, image.height))
+        try:
+            with rt.torch.inference_mode():
+                generated_ids = rt.model.generate(
+                    input_ids=moved["input_ids"],
+                    pixel_values=moved["pixel_values"],
+                    max_new_tokens=1024,
+                    num_beams=3,
+                    early_stopping=False,
+                )
+            generated_text = rt.processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
+            result = rt.processor.post_process_generation(generated_text, task=task, image_size=(image.width, image.height))
+            del generated_ids
+            return result
+        finally:
+            # The MPS allocator never returns generation buffers to the OS on its own;
+            # without this, sequential analyses accumulate tens of GB of Metal memory.
+            del inputs, moved
+            release_accelerator_cache(rt)
 
 
 def extract_task_value(result: dict[str, Any], task: str) -> Any:

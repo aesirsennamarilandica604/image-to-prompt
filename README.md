@@ -6,6 +6,8 @@ Image to Prompt is a minimal local web app that turns an uploaded image into edi
 
 [Florence-2](https://huggingface.co/collections/microsoft/florence) drafts the scene, object boxes, region captions, and OCR regions. The UI lets you drag, resize, rename, duplicate, delete, hide, add zones, and optionally add a structured `style_description` before copying or exporting the JSON.
 
+You can queue multiple images at once: drop several files (or a selection) and they analyze sequentially while you edit. A thumbnail rail above the workspace shows each image's status (queued, analyzing, done, failed), and **Export all** downloads every finished prompt as a zip of JSON files named after the source images.
+
 ## Install
 
 ### 1. 1-click install with Pinokio
@@ -60,11 +62,12 @@ To use a different Florence-2 model, replace `microsoft/Florence-2-base-ft` with
 
 ## How to Use
 
-1. Drop an image into the center canvas or click **Choose image**.
-2. Wait for Florence-2 to draft the editable zones.
-3. Drag or resize boxes directly on the image.
-4. Edit item labels, literal text, descriptions, and types in the left panel.
-5. Copy or export the JSON from the right panel.
+1. Drop one or more images into the center canvas or click **Choose images** (multi-select works). Pasting an image from the clipboard also works.
+2. Images analyze one at a time. The thumbnail rail at the top shows each image's status; you can keep editing while the rest of the queue processes in the background.
+3. Click a thumbnail (or use the left/right arrow keys) to switch between images. Each image keeps its own boxes, prompt fields, and JSON edits. A dot on a thumbnail marks unsaved edits, x removes an image, and ↻ retries a failed one.
+4. Drag or resize boxes directly on the image.
+5. Edit item labels, literal text, descriptions, and types in the left panel.
+6. Copy or export the JSON from the right panel. **Export all** in the rail header downloads a zip with one JSON file per analyzed image.
 
 By default the app omits `style_description`, because Ideogram 4 treats it as optional and Florence-2 does not reliably infer structured style fields. Select a style preset if you want the app to include a schema-valid `style_description`; those presets are app defaults, not official Ideogram presets.
 

@@ -124,7 +124,21 @@ const els = {
   jsonStatus: document.getElementById("jsonStatus"),
   copyBtn: document.getElementById("copyBtn"),
   exportBtn: document.getElementById("exportBtn"),
+  queueBar: document.getElementById("queueBar"),
+  queueRail: document.getElementById("queueRail"),
+  queueCounter: document.getElementById("queueCounter"),
+  failedChip: document.getElementById("failedChip"),
+  exportAllBtn: document.getElementById("exportAllBtn"),
+  loadingLabel: document.getElementById("loadingLabel"),
 };
+
+const queue = {
+  docs: [],
+  activeId: null,
+  running: false,
+};
+
+let restoring = false;
 
 function uid() {
   return `item-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -178,10 +192,10 @@ function paletteToText(palette) {
   return normalizePalette(palette).join(", ");
 }
 
-function resetStyleFields() {
-  state.stylePreset = "none";
-  state.styleKind = "none";
-  state.styleFields = {
+function resetStyleFields(target = state) {
+  target.stylePreset = "none";
+  target.styleKind = "none";
+  target.styleFields = {
     aesthetics: "",
     lighting: "",
     photo: "",
@@ -210,20 +224,20 @@ function applyStylePreset(name) {
   };
 }
 
-function syncStyleFromJson(style) {
+function syncStyleFromJson(style, target = state) {
   if (!isPlainObject(style)) {
-    resetStyleFields();
+    resetStyleFields(target);
     return;
   }
   const hasPhoto = Object.prototype.hasOwnProperty.call(style, "photo");
   const hasArtStyle = Object.prototype.hasOwnProperty.call(style, "art_style");
   if (hasPhoto === hasArtStyle) {
-    resetStyleFields();
+    resetStyleFields(target);
     return;
   }
-  state.stylePreset = hasPhoto ? "custom_photo" : "custom_art";
-  state.styleKind = hasPhoto ? "photo" : "art";
-  state.styleFields = {
+  target.stylePreset = hasPhoto ? "custom_photo" : "custom_art";
+  target.styleKind = hasPhoto ? "photo" : "art";
+  target.styleFields = {
     aesthetics: cleanText(style.aesthetics),
     lighting: cleanText(style.lighting),
     photo: cleanText(style.photo),
@@ -233,10 +247,10 @@ function syncStyleFromJson(style) {
   };
 }
 
-function buildStyleDescription() {
-  if (state.styleKind === "none") return null;
-  const fields = state.styleFields;
-  if (state.styleKind === "photo") {
+function buildStyleDescription(target = state) {
+  if (target.styleKind === "none") return null;
+  const fields = target.styleFields;
+  if (target.styleKind === "photo") {
     const style = {
       aesthetics: fields.aesthetics,
       lighting: fields.lighting,
@@ -279,17 +293,17 @@ function elementToJson(item) {
   };
 }
 
-function defaultJson() {
+function defaultJson(target = state) {
   const prompt = {
-    high_level_description: state.highLevelDescription || state.caption || "Uploaded image scene.",
+    high_level_description: target.highLevelDescription || target.caption || "Uploaded image scene.",
   };
-  const style = buildStyleDescription();
+  const style = buildStyleDescription(target);
   if (style) {
     prompt.style_description = style;
   }
   prompt.compositional_deconstruction = {
-    background: state.background || DEFAULT_BACKGROUND,
-    elements: state.elements.filter((item) => !item.hidden).map(elementToJson),
+    background: target.background || DEFAULT_BACKGROUND,
+    elements: target.elements.filter((item) => !item.hidden).map(elementToJson),
   };
   return prompt;
 }
@@ -438,10 +452,20 @@ function updateJsonStatusFor(data) {
   }
 }
 
+function markEdited() {
+  if (restoring) return;
+  const doc = getDoc(queue.activeId);
+  if (doc && doc.status === "done" && !doc.edited) {
+    doc.edited = true;
+    renderQueue();
+  }
+}
+
 function updateJson() {
   const data = defaultJson();
   els.jsonPreview.value = JSON.stringify(data, null, 2);
   updateJsonStatusFor(data);
+  markEdited();
 }
 
 function syncControlValue(control, value) {
@@ -711,43 +735,299 @@ function mapResultElement(item, index) {
   };
 }
 
-async function analyzeFile(file) {
-  state.file = file;
-  state.imageUrl = URL.createObjectURL(file);
-  els.previewImage.src = state.imageUrl;
-  els.imageWrap.hidden = false;
-  els.emptyState.hidden = true;
-  setLoading(true);
+function getDoc(id) {
+  return queue.docs.find((doc) => doc.id === id) || null;
+}
+
+function activeDoc() {
+  return getDoc(queue.activeId);
+}
+
+function createDoc(file) {
+  return {
+    id: uid(),
+    file,
+    name: file.name || "image",
+    imageUrl: URL.createObjectURL(file),
+    status: "queued",
+    error: "",
+    edited: false,
+    original: null,
+    elements: [],
+    selectedId: null,
+    palette: [],
+    caption: "",
+    highLevelDescription: "",
+    stylePreset: "none",
+    styleKind: "none",
+    styleFields: { aesthetics: "", lighting: "", photo: "", medium: "", artStyle: "", palette: [] },
+    background: "",
+  };
+}
+
+const DOC_FIELDS = [
+  "elements",
+  "selectedId",
+  "palette",
+  "caption",
+  "highLevelDescription",
+  "stylePreset",
+  "styleKind",
+  "styleFields",
+  "background",
+];
+
+function saveActiveDoc() {
+  const doc = activeDoc();
+  if (!doc) return;
+  for (const field of DOC_FIELDS) {
+    doc[field] = state[field];
+  }
+  doc.original = state.original;
+}
+
+function loadDoc(doc) {
+  restoring = true;
+  queue.activeId = doc ? doc.id : null;
+  if (document.activeElement && document.activeElement.matches?.("input, textarea, select")) {
+    document.activeElement.blur();
+  }
+  if (doc) {
+    state.file = doc.file;
+    state.imageUrl = doc.imageUrl;
+    state.original = doc.original;
+    for (const field of DOC_FIELDS) {
+      state[field] = doc[field];
+    }
+    els.previewImage.src = doc.imageUrl;
+  } else {
+    state.file = null;
+    state.imageUrl = "";
+    state.original = null;
+    state.elements = [];
+    state.selectedId = null;
+    state.palette = [];
+    state.caption = "";
+    state.highLevelDescription = "";
+    state.background = "";
+    resetStyleFields();
+    els.previewImage.removeAttribute("src");
+  }
+  els.imageWrap.hidden = !doc;
+  render();
+  restoring = false;
+  renderQueue();
+}
+
+function activateDoc(id) {
+  if (queue.activeId === id) return;
+  saveActiveDoc();
+  loadDoc(getDoc(id));
+  requestAnimationFrame(() => {
+    const tile = els.queueRail.querySelector(`[data-id="${id}"]`);
+    tile?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  });
+}
+
+function handleFiles(fileList) {
+  const files = Array.from(fileList || []).filter((file) => file && file.type.startsWith("image/"));
+  if (!files.length) return;
+  const docs = files.map(createDoc);
+  queue.docs.push(...docs);
+  if (!activeDoc()) {
+    loadDoc(docs[0]);
+  } else {
+    renderQueue();
+  }
+  requestAnimationFrame(() => {
+    els.queueRail.scrollLeft = els.queueRail.scrollWidth;
+  });
+  pumpQueue();
+}
+
+async function requestAnalysis(file) {
   const form = new FormData();
   form.append("file", file);
   const response = await fetch("/api/analyze", { method: "POST", body: form });
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || "Analysis failed.");
+    let detail = text;
+    try {
+      detail = JSON.parse(text).detail || text;
+    } catch {
+      detail = text;
+    }
+    throw new Error(detail || "Analysis failed.");
   }
-  const result = await response.json();
-  state.original = result;
-  state.elements = (result.elements || []).map(mapResultElement);
-  state.selectedId = state.elements[0]?.id || null;
-  state.caption = result.caption || "";
-  state.highLevelDescription = result.json?.high_level_description || result.caption || "";
-  syncStyleFromJson(result.json?.style_description);
-  state.background = result.json?.compositional_deconstruction?.background || result.background || "";
-  state.palette = normalizePalette(result.palette || []);
-  setLoading(false);
-  render();
+  return response.json();
 }
 
-async function handleFile(file) {
-  if (!file || !file.type.startsWith("image/")) {
-    return;
-  }
+function applyAnalysis(doc, result) {
+  doc.original = result;
+  doc.elements = (result.elements || []).map(mapResultElement);
+  doc.selectedId = doc.elements[0]?.id || null;
+  doc.caption = result.caption || "";
+  doc.highLevelDescription = result.json?.high_level_description || result.caption || "";
+  syncStyleFromJson(result.json?.style_description, doc);
+  doc.background = result.json?.compositional_deconstruction?.background || result.background || "";
+  doc.palette = normalizePalette(result.palette || []);
+  doc.edited = false;
+}
+
+async function pumpQueue() {
+  if (queue.running) return;
+  const doc = queue.docs.find((entry) => entry.status === "queued");
+  if (!doc) return;
+  queue.running = true;
+  doc.status = "analyzing";
+  renderQueue();
   try {
-    await analyzeFile(file);
+    const result = await requestAnalysis(doc.file);
+    applyAnalysis(doc, result);
+    doc.status = "done";
   } catch (error) {
-    setLoading(false);
-    window.alert(error.message || "Could not analyze the image.");
+    doc.status = "failed";
+    doc.error = error.message || "Analysis failed.";
   }
+  queue.running = false;
+  if (getDoc(doc.id) && doc.id === queue.activeId && doc.status === "done") {
+    loadDoc(doc);
+  } else {
+    renderQueue();
+  }
+  pumpQueue();
+}
+
+function removeDoc(id) {
+  const doc = getDoc(id);
+  if (!doc || doc.status === "analyzing") return;
+  const index = queue.docs.indexOf(doc);
+  queue.docs.splice(index, 1);
+  URL.revokeObjectURL(doc.imageUrl);
+  if (queue.activeId === id) {
+    queue.activeId = null;
+    loadDoc(queue.docs[index] || queue.docs[index - 1] || null);
+  } else {
+    renderQueue();
+  }
+}
+
+function retryDoc(id) {
+  const doc = getDoc(id);
+  if (!doc || doc.status !== "failed") return;
+  doc.status = "queued";
+  doc.error = "";
+  renderQueue();
+  pumpQueue();
+}
+
+function reanalyzeActive() {
+  const doc = activeDoc();
+  if (!doc || doc.status === "queued" || doc.status === "analyzing") return;
+  doc.status = "queued";
+  doc.error = "";
+  renderQueue();
+  pumpQueue();
+}
+
+function syncStageLoading() {
+  const doc = activeDoc();
+  const pending = Boolean(doc) && (doc.status === "queued" || doc.status === "analyzing");
+  setLoading(pending);
+  if (pending) {
+    els.loadingLabel.textContent = doc.status === "queued" ? "Waiting in queue" : "Analyzing image";
+  }
+}
+
+function makeQueueTile(doc) {
+  const tile = document.createElement("div");
+  tile.className = `queue-tile ${doc.status}${doc.id === queue.activeId ? " active" : ""}`;
+  tile.dataset.id = doc.id;
+
+  const main = document.createElement("button");
+  main.type = "button";
+  main.className = "tile-main";
+  main.title = doc.status === "failed" && doc.error ? `${doc.name} — ${doc.error}` : doc.name;
+  main.setAttribute("aria-label", `${doc.name} (${doc.status})`);
+  const img = document.createElement("img");
+  img.src = doc.imageUrl;
+  img.alt = "";
+  main.appendChild(img);
+  if (doc.status === "analyzing") {
+    const badge = document.createElement("span");
+    badge.className = "tile-badge";
+    badge.innerHTML = '<span class="spinner"></span>';
+    main.appendChild(badge);
+  } else if (doc.status === "done") {
+    const badge = document.createElement("span");
+    badge.className = "tile-badge done-badge";
+    badge.textContent = "✓";
+    main.appendChild(badge);
+  }
+  if (doc.edited) {
+    const dot = document.createElement("span");
+    dot.className = "tile-dot";
+    dot.title = "Edited";
+    main.appendChild(dot);
+  }
+  main.addEventListener("click", () => activateDoc(doc.id));
+  tile.appendChild(main);
+
+  if (doc.status === "failed") {
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "tile-badge retry-badge";
+    retry.textContent = "↻";
+    retry.title = doc.error ? `Retry — ${doc.error}` : "Retry";
+    retry.addEventListener("click", (event) => {
+      event.stopPropagation();
+      retryDoc(doc.id);
+    });
+    tile.appendChild(retry);
+  }
+
+  if (doc.status !== "analyzing") {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "tile-remove";
+    remove.textContent = "×";
+    remove.title = "Remove";
+    remove.addEventListener("click", (event) => {
+      event.stopPropagation();
+      removeDoc(doc.id);
+    });
+    tile.appendChild(remove);
+  }
+
+  const name = document.createElement("span");
+  name.className = "tile-name";
+  name.textContent = doc.status === "failed" ? "failed" : doc.name;
+  tile.appendChild(name);
+  return tile;
+}
+
+function renderQueue() {
+  els.queueBar.hidden = queue.docs.length === 0;
+  const scrollLeft = els.queueRail.scrollLeft;
+  els.queueRail.innerHTML = "";
+  for (const doc of queue.docs) {
+    els.queueRail.appendChild(makeQueueTile(doc));
+  }
+  const addTile = document.createElement("button");
+  addTile.type = "button";
+  addTile.className = "queue-add";
+  addTile.title = "Add images";
+  addTile.textContent = "+";
+  addTile.addEventListener("click", () => els.fileInput.click());
+  els.queueRail.appendChild(addTile);
+  els.queueRail.scrollLeft = scrollLeft;
+  const done = queue.docs.filter((doc) => doc.status === "done").length;
+  const failed = queue.docs.filter((doc) => doc.status === "failed").length;
+  els.queueCounter.textContent = `${done} of ${queue.docs.length} analyzed`;
+  els.failedChip.hidden = failed === 0;
+  els.failedChip.textContent = `${failed} failed`;
+  els.exportAllBtn.disabled = done === 0;
+  syncStageLoading();
 }
 
 function addBox() {
@@ -866,16 +1146,124 @@ async function copyJson() {
   }, 900);
 }
 
-function exportJson() {
-  const blob = new Blob([els.jsonPreview.value], { type: "application/json" });
+function jsonFileName(name) {
+  const base = String(name || "").replace(/\.[^.]+$/, "").trim();
+  return `${base || "ideogram-prompt"}.json`;
+}
+
+function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "ideogram-prompt.json";
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function exportJson() {
+  const blob = new Blob([els.jsonPreview.value], { type: "application/json" });
+  downloadBlob(blob, jsonFileName(activeDoc()?.name));
+}
+
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i += 1) {
+    let value = i;
+    for (let bit = 0; bit < 8; bit += 1) {
+      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+    }
+    table[i] = value >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i += 1) {
+    crc = CRC_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function buildZip(entries) {
+  const encoder = new TextEncoder();
+  const now = new Date();
+  const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
+  const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const name = encoder.encode(entry.name);
+    const data = encoder.encode(entry.text);
+    const crc = crc32(data);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0x0800, true);
+    local.setUint16(8, 0, true);
+    local.setUint16(10, dosTime, true);
+    local.setUint16(12, dosDate, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, data.length, true);
+    local.setUint32(22, data.length, true);
+    local.setUint16(26, name.length, true);
+    local.setUint16(28, 0, true);
+    chunks.push(new Uint8Array(local.buffer), name, data);
+    central.push({ name, crc, size: data.length, offset });
+    offset += 30 + name.length + data.length;
+  }
+  const cdStart = offset;
+  for (const entry of central) {
+    const header = new DataView(new ArrayBuffer(46));
+    header.setUint32(0, 0x02014b50, true);
+    header.setUint16(4, 20, true);
+    header.setUint16(6, 20, true);
+    header.setUint16(8, 0x0800, true);
+    header.setUint16(10, 0, true);
+    header.setUint16(12, dosTime, true);
+    header.setUint16(14, dosDate, true);
+    header.setUint32(16, entry.crc, true);
+    header.setUint32(20, entry.size, true);
+    header.setUint32(24, entry.size, true);
+    header.setUint16(28, entry.name.length, true);
+    header.setUint32(42, entry.offset, true);
+    chunks.push(new Uint8Array(header.buffer), entry.name);
+    offset += 46 + entry.name.length;
+  }
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, central.length, true);
+  end.setUint16(10, central.length, true);
+  end.setUint32(12, offset - cdStart, true);
+  end.setUint32(16, cdStart, true);
+  chunks.push(new Uint8Array(end.buffer));
+  return new Blob(chunks, { type: "application/zip" });
+}
+
+function exportAll() {
+  saveActiveDoc();
+  const docs = queue.docs.filter((doc) => doc.status === "done");
+  if (!docs.length) return;
+  if (docs.length === 1) {
+    const blob = new Blob([JSON.stringify(defaultJson(docs[0]), null, 2)], { type: "application/json" });
+    downloadBlob(blob, jsonFileName(docs[0].name));
+    return;
+  }
+  const used = new Set();
+  const entries = docs.map((doc) => {
+    let name = jsonFileName(doc.name);
+    let counter = 2;
+    while (used.has(name)) {
+      name = jsonFileName(doc.name).replace(/\.json$/, `-${counter}.json`);
+      counter += 1;
+    }
+    used.add(name);
+    return { name, text: JSON.stringify(defaultJson(doc), null, 2) };
+  });
+  downloadBlob(buildZip(entries), "image-prompts.zip");
 }
 
 function parseBbox(value, fallback = [300, 300, 700, 700]) {
@@ -963,10 +1351,46 @@ function updateStyleField(field) {
 }
 
 els.pickFileBtn.addEventListener("click", () => els.fileInput.click());
-els.fileInput.addEventListener("change", () => handleFile(els.fileInput.files[0]));
+els.fileInput.addEventListener("change", () => {
+  handleFiles(els.fileInput.files);
+  els.fileInput.value = "";
+});
 els.addBoxBtn.addEventListener("click", addBox);
-els.autoDetectBtn.addEventListener("click", () => state.file && handleFile(state.file));
+els.autoDetectBtn.addEventListener("click", reanalyzeActive);
 els.resetBtn.addEventListener("click", resetToOriginal);
+els.exportAllBtn.addEventListener("click", exportAll);
+els.failedChip.addEventListener("click", () => {
+  const failed = queue.docs.find((doc) => doc.status === "failed");
+  if (!failed) return;
+  const tile = els.queueRail.querySelector(`[data-id="${failed.id}"]`);
+  tile?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+});
+els.queueRail.addEventListener(
+  "wheel",
+  (event) => {
+    if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+      event.preventDefault();
+      els.queueRail.scrollLeft += event.deltaY;
+    }
+  },
+  { passive: false }
+);
+window.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+  if (event.target.closest?.("input, textarea, select")) return;
+  if (!queue.activeId || queue.docs.length < 2) return;
+  const index = queue.docs.findIndex((doc) => doc.id === queue.activeId);
+  const next = queue.docs[event.key === "ArrowLeft" ? index - 1 : index + 1];
+  if (next) {
+    event.preventDefault();
+    activateDoc(next.id);
+  }
+});
+window.addEventListener("paste", (event) => {
+  if (event.clipboardData?.files?.length) {
+    handleFiles(event.clipboardData.files);
+  }
+});
 els.copyBtn.addEventListener("click", () => copyJson().catch(() => window.alert("Clipboard access was blocked.")));
 els.exportBtn.addEventListener("click", exportJson);
 els.highLevelInput.addEventListener("input", () => updatePromptField("highLevel"));
@@ -1003,8 +1427,8 @@ for (const eventName of ["dragleave", "drop"]) {
 }
 
 els.dropzone.addEventListener("drop", (event) => {
-  const file = event.dataTransfer.files[0];
-  handleFile(file);
+  handleFiles(event.dataTransfer.files);
 });
 
 updateJson();
+renderQueue();

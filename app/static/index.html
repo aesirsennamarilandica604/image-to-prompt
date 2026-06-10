@@ -4,9 +4,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Image to Prompt</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260608-scroll1" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260610-queue1" />
   </head>
   <body>
+    <header id="queueBar" class="queue-bar" hidden>
+      <div id="queueRail" class="queue-rail" aria-label="Image queue"></div>
+      <div class="queue-meta">
+        <span id="queueCounter" class="queue-counter"></span>
+        <button id="failedChip" class="failed-chip" type="button" hidden></button>
+        <button id="exportAllBtn" type="button" disabled>Export all</button>
+      </div>
+    </header>
     <main class="workspace">
       <aside class="panel items-panel" aria-label="Detected items">
         <div class="panel-head">
@@ -65,19 +73,19 @@
           <span class="eyebrow">Elements</span>
           <button id="addBoxBtn" class="icon-button" title="Add box" type="button">+</button>
         </div>
-        <div id="emptyItems" class="quiet">Drop an image to create editable zones.</div>
+        <div id="emptyItems" class="quiet">Drop images to create editable zones.</div>
         <div id="itemsList" class="items-list"></div>
       </aside>
 
       <section id="dropzone" class="stage" aria-label="Image editor">
-        <input id="fileInput" type="file" accept="image/*" hidden />
+        <input id="fileInput" type="file" accept="image/*" multiple hidden />
         <div id="emptyState" class="empty-state">
-          <button id="pickFileBtn" class="upload-button" type="button">Choose image</button>
-          <p>or drop one here</p>
+          <button id="pickFileBtn" class="upload-button" type="button">Choose images</button>
+          <p>or drop or paste them here — multiple images queue up</p>
         </div>
         <div id="loadingState" class="loading-state" hidden>
           <div class="spinner" aria-hidden="true"></div>
-          <span>Analyzing image</span>
+          <span id="loadingLabel">Analyzing image</span>
         </div>
         <div id="imageWrap" class="image-wrap" hidden>
           <img id="previewImage" alt="Uploaded image" />
@@ -101,6 +109,6 @@
         <textarea id="jsonPreview" class="json-preview" spellcheck="false" aria-label="Editable JSON prompt">{}</textarea>
       </aside>
     </main>
-    <script src="/static/app.js?v=20260608-schema3"></script>
+    <script src="/static/app.js?v=20260610-queue1"></script>
   </body>
 </html>

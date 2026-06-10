@@ -28,6 +28,8 @@ body {
 }
 
 body {
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
   color: var(--text);
   font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -68,8 +70,184 @@ textarea:focus-visible {
   grid-template-columns: minmax(230px, 280px) minmax(360px, 1fr) minmax(320px, 430px);
   gap: 12px;
   width: 100%;
-  height: 100vh;
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 12px;
+}
+
+.queue-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 0 0 auto;
+  padding: 10px 12px 0;
+}
+
+.queue-rail {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.queue-tile {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+}
+
+.tile-main {
+  position: relative;
+  display: block;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.queue-tile.active .tile-main {
+  border-color: var(--selected);
+  box-shadow: 0 0 0 1.5px var(--selected);
+}
+
+.queue-tile.failed .tile-main {
+  border-color: #c98a8a;
+}
+
+.tile-main img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.queue-tile.queued .tile-main img {
+  opacity: 0.5;
+}
+
+.tile-badge {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.tile-badge.done-badge {
+  color: #2f6f4f;
+}
+
+.tile-badge.retry-badge {
+  top: 43px;
+  bottom: auto;
+  color: #9b2c2c;
+  cursor: pointer;
+}
+
+.tile-badge .spinner {
+  width: 10px;
+  height: 10px;
+  border-width: 2px;
+}
+
+.tile-dot {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid #fff;
+  border-radius: 999px;
+  background: var(--selected);
+}
+
+.tile-remove {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  z-index: 2;
+  display: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.queue-tile:hover .tile-remove {
+  display: grid;
+}
+
+.tile-name {
+  display: block;
+  max-width: 64px;
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-tile.failed .tile-name {
+  color: #9b2c2c;
+}
+
+.queue-add {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.queue-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 64px;
+}
+
+.queue-counter {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.failed-chip {
+  min-height: 28px;
+  padding: 0 10px;
+  border-color: #e0b4b4;
+  color: #9b2c2c;
+  font-size: 12px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .panel,
