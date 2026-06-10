@@ -1,0 +1,5 @@
+{
+  "title": "Image to Prompt",
+  "description": "Generate editable Ideogram JSON prompts from uploaded images.",
+  "icon": "icon.svg"
+}
