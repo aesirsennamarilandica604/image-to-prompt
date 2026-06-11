@@ -12,7 +12,7 @@ You can queue multiple images at once: drop several files (or a selection) and t
 
 ### 1. 1-click install with Pinokio
 
-The easiest way to install and run Image to Prompt is with [Pinokio](https://pinokio.co).
+The easiest way to install and run Image to Prompt is with [Pinokio](https://pinokio.co/apps/github-com-cocktailpeanut-image-to-prompt).
 
 
 ### 2. Install manually
